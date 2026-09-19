@@ -1,7 +1,5 @@
-// Tipos manuales que reflejan supabase/migrations/0001_init.sql.
-// Cuando el esquema crezca, se puede reemplazar por tipos generados con
-// `supabase gen types typescript` — mientras tanto esto mantiene el
-// proyecto tipado sin depender del CLI de Supabase.
+// Tipos manuales que reflejan migrations/0001_auth.sql y
+// migrations/0002_schema.sql (Neon/Postgres, sin Supabase).
 
 export type BusinessStatus = "trial" | "active" | "paused" | "cancelled";
 export type BusinessPlan = "pilot" | "starter" | "pro";
@@ -26,6 +24,8 @@ export interface Business {
   status: BusinessStatus;
   plan: BusinessPlan;
   trial_ends_at: string | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -62,9 +62,9 @@ export interface BoraConfig {
   min_notice_minutes: number;
   max_days_ahead: number;
   requires_confirmation: boolean;
+  reminder_hours_before: number;
   whatsapp_phone_number_id: string | null;
   whatsapp_business_account_id: string | null;
-  whatsapp_verify_token: string | null;
   google_calendar_id: string | null;
   google_refresh_token: string | null;
   is_active: boolean;
@@ -147,6 +147,7 @@ export interface Appointment {
   ends_at: string;
   status: AppointmentStatus;
   google_event_id: string | null;
+  reminder_sent_at: string | null;
   created_at: string;
   updated_at: string;
 }

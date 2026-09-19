@@ -1,5 +1,5 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireBusinessContext } from "@/lib/supabase/business-context";
+import { db } from "@/lib/db/client";
+import { requireBusinessContext } from "@/lib/auth/business-context";
 import type { BoraConfig, Faq, Service } from "@/types/database";
 import { addFaq, addService, updateBoraConfig } from "./actions";
 
@@ -7,20 +7,41 @@ import { addFaq, addService, updateBoraConfig } from "./actions";
 // para un gimnasio que para un consultorio dental: todo lo que un dueño de
 // negocio configura aquí es lo que el motor (src/lib/bora/engine.ts) lee en
 // tiempo real, sin ningún despliegue ni cambio de código de por medio.
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: { google?: string };
+}) {
   const { business } = await requireBusinessContext();
-  const supabase = createServerSupabaseClient();
 
-  const [{ data: config }, { data: services }, { data: faqs }] = await Promise.all([
-    supabase.from("bora_configs").select("*").eq("business_id", business.id).single<BoraConfig>(),
-    supabase.from("services").select("*").eq("business_id", business.id).returns<Service[]>(),
-    supabase.from("faqs").select("*").eq("business_id", business.id).returns<Faq[]>(),
+  const [config, services, faqs] = await Promise.all([
+    db
+      .selectFrom("bora_configs")
+      .selectAll()
+      .where("business_id", "=", business.id)
+      .executeTakeFirst() as Promise<BoraConfig | undefined>,
+    db.selectFrom("services").selectAll().where("business_id", "=", business.id).execute() as Promise<
+      Service[]
+    >,
+    db.selectFrom("faqs").selectAll().where("business_id", "=", business.id).execute() as Promise<Faq[]>,
   ]);
+
+  const googleConnected = Boolean(config?.google_refresh_token);
 
   return (
     <div className="flex flex-col gap-10">
       <section>
         <h1 className="mb-4 font-bold text-2xl">Configurar Bora</h1>
+        {searchParams.google === "connected" && (
+          <p className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-green-700 text-sm">
+            Google Calendar conectado correctamente.
+          </p>
+        )}
+        {searchParams.google === "error" && (
+          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-red-700 text-sm">
+            No se pudo conectar Google Calendar. Intenta de nuevo.
+          </p>
+        )}
         <form action={updateBoraConfig} className="flex max-w-lg flex-col gap-3">
           <label className="text-sm">
             Nombre del asistente
@@ -60,12 +81,26 @@ export default async function SettingsPage() {
             />
           </label>
           <label className="text-sm">
-            ID de Google Calendar
+            WhatsApp Business Account ID (WABA)
             <input
-              name="google_calendar_id"
-              defaultValue={config?.google_calendar_id ?? ""}
+              name="whatsapp_business_account_id"
+              defaultValue={config?.whatsapp_business_account_id ?? ""}
               className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
             />
+          </label>
+          <label className="text-sm">
+            Recordatorio de cita (horas antes, 0 = desactivado)
+            <input
+              name="reminder_hours_before"
+              type="number"
+              min={0}
+              defaultValue={config?.reminder_hours_before ?? 24}
+              className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2"
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="is_active" defaultChecked={config?.is_active} />
+            Bora está activo (responde mensajes de WhatsApp)
           </label>
           <button className="mt-2 w-fit rounded-lg bg-petroleum px-4 py-2 text-white">
             Guardar
@@ -74,9 +109,30 @@ export default async function SettingsPage() {
       </section>
 
       <section>
+        <h2 className="mb-4 font-bold text-xl">Google Calendar</h2>
+        {googleConnected ? (
+          <p className="text-sm text-green-700">
+            Conectado (calendario: {config?.google_calendar_id ?? "primary"}). Vuelve a
+            conectar si quieres cambiar de cuenta.
+          </p>
+        ) : (
+          <p className="text-sm text-stone-500">
+            Sin conectar — Bora no podrá revisar disponibilidad real ni crear citas hasta que
+            conectes un calendario.
+          </p>
+        )}
+        <a
+          href="/api/google/connect"
+          className="mt-2 inline-block rounded-lg border border-petroleum px-4 py-2 text-sm text-petroleum"
+        >
+          {googleConnected ? "Reconectar Google Calendar" : "Conectar Google Calendar"}
+        </a>
+      </section>
+
+      <section>
         <h2 className="mb-4 font-bold text-xl">Servicios</h2>
         <ul className="mb-4 flex flex-col gap-1 text-sm">
-          {(services ?? []).map((s) => (
+          {services.map((s) => (
             <li key={s.id}>
               {s.name} — {s.duration_minutes} min
             </li>
@@ -104,7 +160,7 @@ export default async function SettingsPage() {
       <section>
         <h2 className="mb-4 font-bold text-xl">Preguntas frecuentes</h2>
         <ul className="mb-4 flex flex-col gap-2 text-sm">
-          {(faqs ?? []).map((f) => (
+          {faqs.map((f) => (
             <li key={f.id} className="rounded-lg border border-stone-200 p-3">
               <p className="font-medium">{f.question}</p>
               <p className="text-stone-600">{f.answer}</p>

@@ -1,5 +1,5 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { requireBusinessContext } from "@/lib/supabase/business-context";
+import { db } from "@/lib/db/client";
+import { requireBusinessContext } from "@/lib/auth/business-context";
 import type { Lead } from "@/types/database";
 
 const STATUS_LABEL: Record<Lead["status"], string> = {
@@ -20,14 +20,13 @@ const STATUS_COLOR: Record<Lead["status"], string> = {
 
 export default async function LeadsPage() {
   const { business } = await requireBusinessContext();
-  const supabase = createServerSupabaseClient();
 
-  const { data: leads } = await supabase
-    .from("leads")
-    .select("*")
-    .eq("business_id", business.id)
-    .order("created_at", { ascending: false })
-    .returns<Lead[]>();
+  const leads = (await db
+    .selectFrom("leads")
+    .selectAll()
+    .where("business_id", "=", business.id)
+    .orderBy("created_at", "desc")
+    .execute()) as Lead[];
 
   return (
     <div>
@@ -43,7 +42,7 @@ export default async function LeadsPage() {
           </tr>
         </thead>
         <tbody>
-          {(leads ?? []).map((lead) => (
+          {leads.map((lead) => (
             <tr key={lead.id} className="border-b border-stone-100">
               <td className="py-2">{lead.full_name ?? "—"}</td>
               <td>{lead.phone}</td>
@@ -56,7 +55,7 @@ export default async function LeadsPage() {
               <td>{new Date(lead.created_at).toLocaleDateString("es-MX")}</td>
             </tr>
           ))}
-          {(!leads || leads.length === 0) && (
+          {leads.length === 0 && (
             <tr>
               <td colSpan={5} className="py-6 text-center text-stone-400">
                 Aún no hay leads. En cuanto alguien escriba a tu WhatsApp, aparecerá aquí.

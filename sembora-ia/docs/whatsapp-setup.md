@@ -21,8 +21,8 @@ negocio pertenece cada mensaje leyendo el `phone_number_id` que Meta manda
 en cada notificación. Eso significa que **cada negocio necesita su propio
 número de WhatsApp**, aunque todos cuelguen de tu misma app y tu misma
 cuenta de empresa (WABA) — dos negocios NUNCA deben compartir un
-`phone_number_id` (de hecho, `supabase/migrations/0002_production_hardening.sql`
-agrega una restricción en la base de datos que lo impide directamente).
+`phone_number_id` (de hecho, `migrations/0002_schema.sql` agrega una
+restricción en la base de datos que lo impide directamente).
 
 La buena noticia: agregar números adicionales a tu misma WABA **no tiene
 costo** y no requiere verificación de negocio para el piloto — cada número
@@ -96,14 +96,14 @@ Meta necesita una URL HTTPS pública para el webhook — no puede apuntar a tu
    `WHATSAPP_WEBHOOK_VERIFY_TOKEN`).
 3. Anota la URL que te da Vercel, ej. `https://sembora-ia.vercel.app`.
    El endpoint del webhook será:
-   `https://sembora-ia.vercel.app/api/whatsapp/webhook`.
+   `https://sembora-ia.vercel.app/api/webhooks/whatsapp`.
 
 ## Paso 6 — Configurar el Webhook en Meta
 
 1. En tu app → **WhatsApp → Configuración**.
 2. Sección **Webhook** → **Editar**.
 3. **URL de devolución de llamada (Callback URL)**:
-   `https://sembora-ia.vercel.app/api/whatsapp/webhook`
+   `https://sembora-ia.vercel.app/api/webhooks/whatsapp`
 4. **Token de verificación**: escribe el mismo valor que pusiste en
    `WHATSAPP_WEBHOOK_VERIFY_TOKEN` en Vercel (invéntate un string largo y
    aleatorio, ej. con `openssl rand -hex 32`).
@@ -118,8 +118,9 @@ Meta necesita una URL HTTPS pública para el webhook — no puede apuntar a tu
 
 1. Desde tu celular, mándale un WhatsApp a 9932197862.
 2. En los logs de Vercel (`vercel logs` o el dashboard) deberías ver la
-   petición `POST` entrando a `/api/whatsapp/webhook`.
-3. Revisa en Supabase (tabla `messages`) que se haya guardado el mensaje
+   petición `POST` entrando a `/api/webhooks/whatsapp`.
+3. Revisa en tu base de datos de Neon (tabla `messages`, con el SQL Editor
+   de Neon o `psql "$DATABASE_URL"`) que se haya guardado el mensaje
    entrante y la respuesta de Bora.
 4. Deberías recibir la respuesta de Bora en tu WhatsApp en segundos.
 
@@ -162,11 +163,12 @@ Por cada negocio nuevo:
 
 1. Da de alta su número de teléfono en tu WABA (Paso 2) y anota su
    `phone_number_id` propio.
-2. Usa `supabase/seed/onboard_business_template.sql` para crear su fila en
-   `businesses`, `bora_configs` (con ESE `phone_number_id`), vincular al
-   dueño y cargar sus primeros servicios/FAQs.
-3. El dueño termina de configurar tono, horarios, servicios y FAQs desde el
-   panel (`/settings`).
+2. El dueño crea su propia cuenta en `/onboarding` (nombre del negocio,
+   correo, contraseña) — eso crea su fila en `businesses`, `bora_configs`
+   y lo vincula como owner automáticamente. Ya no hace falta SQL manual.
+3. El dueño pega ESE `phone_number_id` (y el WABA ID) en `/settings`, activa
+   a Bora, y termina de configurar tono, horarios, servicios y FAQs desde
+   el mismo panel.
 
 El `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET` y el webhook son
 compartidos por toda la plataforma (una sola app de Meta) — nunca cambian
@@ -188,16 +190,16 @@ funcionando en producción con este número:
    `openssl rand -hex 32` en tu terminal) → pégalo en Vercel Y en el campo
    "Token de verificación" del webhook en Meta (Paso 6).
 4. **`phone_number_id` de 9932197862** → obtenido en el Paso 2 → pégalo en
-   Supabase, columna `bora_configs.whatsapp_phone_number_id`, en la fila
-   del negocio que vas a conectar (usa
-   `supabase/seed/onboard_business_template.sql` si aún no existe esa fila).
+   el campo "Phone Number ID de WhatsApp" de `/settings`, ya logueado como
+   el negocio que vas a conectar (o crea la cuenta primero en `/onboarding`
+   si aún no existe).
 5. **`whatsapp_business_account_id` (WABA ID)** → obtenido en el Paso 2 →
-   mismo lugar, columna `bora_configs.whatsapp_business_account_id`.
-6. Confirma que esa fila de `bora_configs` tenga `is_active = true` — si
-   no, el webhook la ignora a propósito.
+   mismo formulario, campo "WhatsApp Business Account ID (WABA)".
+6. Marca la casilla "Bora está activo" en `/settings` y guarda — si no,
+   el webhook ignora los mensajes de ese negocio a propósito.
 
-En cuanto tengas esos 5 valores pegados en su lugar y hayas corrido las dos
-migraciones SQL (`0001_init.sql` y `0002_production_hardening.sql`), el
-sistema queda funcionando de extremo a extremo: alguien le escribe a
-9932197862 por WhatsApp, Bora responde usando la configuración de ese
-negocio, y todo queda registrado en `leads`/`conversations`/`messages`.
+En cuanto tengas esos 5 valores pegados en su lugar y hayas corrido las
+migraciones (`npm run db:migrate`, ver README), el sistema queda
+funcionando de extremo a extremo: alguien le escribe a 9932197862 por
+WhatsApp, Bora responde usando la configuración de ese negocio, y todo
+queda registrado en `leads`/`conversations`/`messages`.

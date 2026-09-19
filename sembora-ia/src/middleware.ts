@@ -1,45 +1,27 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Refresca la sesión de Supabase en cada request y protege las rutas del
-// panel (todo lo que no sea /login, /api/*, o assets públicos).
-export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request: { headers: request.headers } });
+// El middleware corre en el runtime Edge, que no puede abrir conexiones TCP
+// a Postgres (pg/Kysely necesitan Node.js runtime). Por eso aquí solo se
+// hace una verificación barata — "¿existe la cookie de sesión?" — para
+// evitar el flash de una página protegida antes del redirect. La
+// verificación real y autoritativa (¿la sesión sigue siendo válida en la
+// tabla `sessions`?) ocurre en requireBusinessContext(), que corre en cada
+// Server Component / Server Action con acceso completo a la base de datos.
+const SESSION_COOKIE = "sembora_session";
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(
-          cookiesToSet: { name: string; value: string; options: CookieOptions }[]
-        ) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request: { headers: request.headers } });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
+export function middleware(request: NextRequest) {
+  const isAuthRoute =
+    request.nextUrl.pathname.startsWith("/login") ||
+    request.nextUrl.pathname.startsWith("/onboarding");
   const isApiRoute = request.nextUrl.pathname.startsWith("/api");
+  const isPublicRoute = request.nextUrl.pathname === "/";
+  const hasSession = request.cookies.has(SESSION_COOKIE);
 
-  if (!user && !isAuthRoute && !isApiRoute) {
-    const redirectUrl = new URL("/login", request.url);
-    return NextResponse.redirect(redirectUrl);
+  if (!hasSession && !isAuthRoute && !isApiRoute && !isPublicRoute) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {

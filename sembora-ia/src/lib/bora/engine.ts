@@ -1,4 +1,5 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Kysely } from "kysely";
+import type { DB } from "@/lib/db/schema";
 import {
   BoraConfig,
   Business,
@@ -23,7 +24,7 @@ import { getBusySlots, createCalendarEvent } from "@/lib/calendar/google";
 // ───────────────────────────────────────────────────────────────────────
 
 interface EngineContext {
-  supabase: SupabaseClient;
+  db: Kysely<DB>;
   business: Business;
   config: BoraConfig;
   services: Service[];
@@ -258,15 +259,18 @@ export async function handleIncomingMessage(
         googleEventId = event.id ?? null;
       }
 
-      await ctx.supabase.from("appointments").insert({
-        business_id: ctx.business.id,
-        lead_id: lead.id,
-        service_id: service?.id,
-        starts_at: startsAt.toISOString(),
-        ends_at: endsAt.toISOString(),
-        status: config.requires_confirmation ? "booked" : "confirmed",
-        google_event_id: googleEventId,
-      });
+      await ctx.db
+        .insertInto("appointments")
+        .values({
+          business_id: ctx.business.id,
+          lead_id: lead.id,
+          service_id: service?.id ?? null,
+          starts_at: startsAt.toISOString(),
+          ends_at: endsAt.toISOString(),
+          status: config.requires_confirmation ? "booked" : "confirmed",
+          google_event_id: googleEventId,
+        })
+        .execute();
 
       return {
         reply:

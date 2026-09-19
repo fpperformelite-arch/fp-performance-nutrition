@@ -1,10 +1,12 @@
 import { google } from "googleapis";
+import { getOAuthClient as getBaseOAuthClient } from "@/lib/google/oauth";
 
 // Integración genérica con Google Calendar: cada negocio conecta SU propio
-// calendario (OAuth) y guarda el refresh_token de forma segura (ver
-// ARCHITECTURE.md, sección "Secretos por tenant"). Aquí solo se modela la
-// interacción con la API — la lógica de negocio (duración de servicio,
-// horarios, buffers) viene de bora_configs/services y se pasa como parámetro.
+// calendario (OAuth, ver src/app/api/google/{connect,callback}) y guarda el
+// refresh_token de forma segura (ver ARCHITECTURE.md, sección "Secretos por
+// tenant"). Aquí solo se modela la interacción con la API — la lógica de
+// negocio (duración de servicio, horarios, buffers) viene de
+// bora_configs/services y se pasa como parámetro.
 
 interface FreeBusyParams {
   refreshToken: string;
@@ -14,11 +16,7 @@ interface FreeBusyParams {
 }
 
 function getOAuthClient(refreshToken: string) {
-  const client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
-  );
+  const client = getBaseOAuthClient();
   client.setCredentials({ refresh_token: refreshToken });
   return client;
 }
