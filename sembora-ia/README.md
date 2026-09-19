@@ -20,9 +20,11 @@ para la guía paso a paso de Meta.
 ## 1. Setup del proyecto Supabase
 
 1. Crea un proyecto gratuito en [supabase.com](https://supabase.com).
-2. En **SQL Editor**, corre el contenido de
-   `supabase/migrations/0001_init.sql` (crea todas las tablas, RLS y
-   triggers).
+2. En **SQL Editor**, corre en orden el contenido de
+   `supabase/migrations/0001_init.sql` (tablas, RLS, triggers) y luego
+   `supabase/migrations/0002_production_hardening.sql` (constraints de
+   idempotencia y de aislamiento entre negocios — necesarias antes de
+   conectar un número real).
 3. En **Authentication → Providers**, confirma que **Email** esté activo
    (usamos magic links, no contraseñas, para el MVP).
 4. En **Authentication → URL Configuration**, agrega
@@ -35,24 +37,12 @@ para la guía paso a paso de Meta.
 ### Dar de alta tu primer negocio (piloto)
 
 Como el registro de negocios (onboarding self-service) no es parte del
-MVP prioritario, para el piloto das de alta el primer negocio a mano desde
-el SQL Editor de Supabase:
-
-```sql
--- 1. Crea el negocio
-insert into businesses (name, slug, industry_label)
-values ('Gimnasio Ejemplo', 'gimnasio-ejemplo', 'Gimnasio')
-returning id;
-
--- 2. Crea su configuración de Bora (usa el id de arriba)
-insert into bora_configs (business_id, assistant_name, welcome_message, is_active)
-values ('<business_id>', 'Bora', '¡Hola! Soy Bora, el asistente de Gimnasio Ejemplo 💪', true);
-
--- 3. Crea el usuario dueño: primero el dueño debe registrarse una vez
---    desde /login (esto crea su fila en auth.users), luego vincúlalo:
-insert into business_users (business_id, user_id, role, full_name)
-values ('<business_id>', '<user_id de auth.users>', 'owner', 'Nombre del dueño');
-```
+MVP prioritario, para el piloto das de alta cada negocio a mano desde el
+SQL Editor de Supabase, usando la plantilla de
+`supabase/seed/onboard_business_template.sql` (copia el archivo, rellena
+los placeholders y córrelo). Necesitas haber completado
+`docs/whatsapp-setup.md` hasta obtener el `phone_number_id` del número real
+del negocio antes de correrla.
 
 ## 2. Correr el proyecto localmente
 
@@ -115,6 +105,7 @@ npm run lint       # ESLint
 - [x] Panel de administración (login, dashboard de métricas, leads, config de Bora)
 - [x] Roles owner/staff
 - [x] Webhook de WhatsApp + motor de conversación genérico (FAQs, captura de lead, agendado)
+- [x] Webhook endurecido para producción: verifica firma HMAC de Meta (`X-Hub-Signature-256`), es idempotente ante reintentos de Meta, y responde con un mensaje de respaldo a mensajes que no son de texto (imagen, audio, ubicación, etc.)
 - [x] Integración con Google Calendar (disponibilidad + creación de eventos)
 - [ ] Stripe (se implementa después del piloto, según lo planeado)
 - [ ] Onboarding self-service de negocios nuevos (por ahora, alta manual — ver arriba)

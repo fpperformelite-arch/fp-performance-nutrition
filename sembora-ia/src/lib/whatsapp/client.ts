@@ -51,7 +51,9 @@ export async function sendWhatsAppText({
 export interface IncomingWhatsAppMessage {
   phoneNumberId: string; // identifica a QUÉ negocio pertenece este mensaje
   from: string; // número del lead
-  text: string;
+  type: "text" | "unsupported";
+  text: string; // vacío cuando type === "unsupported"
+  unsupportedType?: string; // "image", "audio", "document", "location", etc.
   waMessageId: string;
   timestamp: string;
 }
@@ -66,12 +68,28 @@ export function parseWhatsAppWebhookBody(
     for (const change of entry.changes ?? []) {
       const value = change.value;
       const phoneNumberId = value?.metadata?.phone_number_id;
+      if (!phoneNumberId) continue;
+
       for (const msg of value?.messages ?? []) {
-        if (msg.type === "text" && phoneNumberId) {
+        if (msg.type === "text") {
           messages.push({
             phoneNumberId,
             from: msg.from,
+            type: "text",
             text: msg.text?.body ?? "",
+            waMessageId: msg.id,
+            timestamp: msg.timestamp,
+          });
+        } else {
+          // Imágenes, audio, ubicación, stickers, etc. — no leemos su
+          // contenido, pero sí acusamos recibo con una respuesta genérica
+          // en vez de dejar al lead sin ninguna respuesta.
+          messages.push({
+            phoneNumberId,
+            from: msg.from,
+            type: "unsupported",
+            text: "",
+            unsupportedType: msg.type,
             waMessageId: msg.id,
             timestamp: msg.timestamp,
           });
