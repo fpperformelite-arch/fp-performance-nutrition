@@ -1,8 +1,33 @@
 # Configurar WhatsApp Cloud API (paso a paso)
 
+## ⚠️ Primero decide: ¿tu número usa Kapso o Meta directo?
+
+Este proyecto soporta **dos** rutas de entrada de WhatsApp, cada una con su
+propio webhook:
+
+| Ruta | Cuándo usarla | Endpoint |
+|---|---|---|
+| **Kapso (BSP)** | El número está conectado vía Kapso, normalmente en **coexistencia** con la app de WhatsApp Business en tu celular (verificado en vivo para **9932197862**: `platform_type: CLOUD_API`, `is_coexistence: true`, webhook de Meta apunta a `meta-webhooks.kapso.ai`) | `/api/webhooks/kapso/whatsapp` |
+| **Meta directo** | Número Cloud API "puro", sin BSP, con tu propia app de Meta for Developers y tu propio token permanente | `/api/webhooks/whatsapp` |
+
+**Para 9932197862 (el número real del piloto): usa la sección "Checklist
+Kapso" al final de este documento.** El resto de esta guía (Pasos 1–9)
+describe la ruta Meta directo — solo la necesitas si conectas un número
+**nuevo** que no pase por Kapso, o si en el futuro decides migrar
+9932197862 fuera de Kapso (proceso formal en Meta Business Manager, no
+instantáneo — te desconecta la coexistencia con la app en tu celular).
+
+**No actives las dos rutas para el mismo número.** Un mismo `phone_number_id`
+solo puede tener un webhook real recibiendo sus eventos a la vez (o Kapso, o
+Meta directo) — mezclar las dos no duplica funcionalidad, solo genera
+confusión sobre cuál efectivamente está respondiendo.
+
+---
+
 Ya tienes un número verificado con Meta, así que partimos de ahí. Esto lo
 haces **tú directamente en Meta for Developers** — el código de este repo
-solo consume lo que configures aquí.
+solo consume lo que configures aquí. (Ver arriba: esta sección es para la
+ruta Meta directo, no para 9932197862 mientras esté en Kapso.)
 
 ## Paso 0 — Qué vas a necesitar al final
 
@@ -203,3 +228,67 @@ migraciones (`npm run db:migrate`, ver README), el sistema queda
 funcionando de extremo a extremo: alguien le escribe a 9932197862 por
 WhatsApp, Bora responde usando la configuración de ese negocio, y todo
 queda registrado en `leads`/`conversations`/`messages`.
+
+**Esta ruta (Meta directo) NO aplica a 9932197862 mientras el número siga
+conectado vía Kapso — usa el checklist de abajo para ese número.**
+
+---
+
+## Checklist real para 9932197862 (conectado vía Kapso)
+
+Confirmado en vivo contra la API de Kapso: el número **+52 1 993 219 7862**
+(`phone_number_id` de Meta: `913171191887465`, WABA: `1506070057126951`)
+está `CONNECTED`, en producción (`kind: production`), en **coexistencia**
+con la app de WhatsApp Business de tu celular. Meta le entrega los eventos
+a Kapso (`meta-webhooks.kapso.ai`), y Kapso ya tiene un webhook configurado
+apuntando a `https://sembora-maestro.vercel.app/api/webhooks/kapso/whatsapp`
+— esa ruta ahora existe en el código (antes daba 404, por eso los mensajes
+reales no llegaban).
+
+Valores que faltan pegar en Vercel (Settings → Environment Variables,
+**en las tres variantes: Production, Preview y Development** — si solo
+queda en Production, el build de Preview vuelve a fallar como pasó antes
+con `DATABASE_URL`):
+
+1. **`KAPSO_API_KEY`** → la misma que ya tienes guardada (la que usó el
+   audit de arriba para consultar la API de Kapso). Se usa para ENVIAR las
+   respuestas de Bora de vuelta por WhatsApp.
+2. **`KAPSO_WEBHOOK_SECRET`** → el `secret_key` DEL WEBHOOK que ya está
+   configurado en Kapso (id `58b4cd82-a80d-48f8-b277-ab9f598620c5`, el que
+   apunta a `.../api/webhooks/kapso/whatsapp`). Sácalo del dashboard de
+   Kapso (Platform → Webhooks → ese webhook → "Signing secret") o de la API
+   (`GET /platform/v1/whatsapp/phone_numbers/913171191887465/webhooks`,
+   campo `secret_key`, sin redactar). **No es la `KAPSO_API_KEY`** — son dos
+   secretos distintos con propósitos distintos.
+3. En `/settings` del negocio correspondiente (créalo primero en
+   `/onboarding` si aún no existe una cuenta):
+   - **Phone Number ID de WhatsApp**: `913171191887465`
+   - **WhatsApp Business Account ID (WABA)**: `1506070057126951`
+   - Marca "Bora está activo" y guarda.
+
+No hace falta tocar nada en Meta for Developers ni en Kapso del lado del
+webhook — ya está creado y verificado (`webhook_verified_at` confirma que
+Kapso ya validó esta URL en el pasado; el 404 que había era solo porque
+nuestro código nunca implementaba esa ruta, no porque el webhook estuviera
+mal configurado).
+
+### Probar el flujo
+
+1. Manda un WhatsApp normal a +52 1 993 219 7862 desde tu celular (otro
+   número, no el mismo que tiene la app de WhatsApp Business conectada).
+2. En los logs de Vercel deberías ver `POST /api/webhooks/kapso/whatsapp`.
+3. Si ves `"Invalid signature"`, el `KAPSO_WEBHOOK_SECRET` no es el correcto
+   — vuelve a copiarlo del dashboard/API de Kapso para ESE webhook
+   específico (no un secret de otro).
+4. Si ves `"Server misconfigured"`, falta `KAPSO_API_KEY` o
+   `KAPSO_WEBHOOK_SECRET` en Vercel.
+5. Revisa que el negocio tenga `whatsapp_phone_number_id = 913171191887465`
+   y `is_active = true` en `bora_configs`.
+6. Deberías recibir la respuesta de Bora en segundos, enviada vía Kapso.
+
+### Sobre el "segundo número" (sandbox) en la misma cuenta de Kapso
+
+La auditoría también encontró un número `Sandbox WhatsApp`
+(`phone_number_id: 597907523413541`, `kind: sandbox`) en la misma cuenta de
+Kapso. Ese **no** es el número de producción — no lo conectes a ningún
+negocio real en `/settings`; solo sirve para pruebas internas de Kapso.
