@@ -1,11 +1,6 @@
 import { requireBusinessContext } from "@/lib/auth/business-context";
 import { startCheckout } from "./actions";
 
-const PLANS = [
-  { id: "starter", name: "Starter", description: "Un negocio, WhatsApp + Google Calendar." },
-  { id: "pro", name: "Pro", description: "Más volumen de conversaciones y soporte prioritario." },
-];
-
 export default async function BillingPage({
   searchParams,
 }: {
@@ -32,19 +27,19 @@ export default async function BillingPage({
         </p>
       )}
 
-      <div className="grid max-w-lg gap-4">
-        {PLANS.map((plan) => (
-          <div key={plan.id} className="rounded-xl border border-stone-200 p-4">
-            <p className="font-bold text-petroleum">{plan.name}</p>
-            <p className="mb-3 text-sm text-stone-500">{plan.description}</p>
-            <form action={startCheckout}>
-              <input type="hidden" name="plan" value={plan.id} />
-              <button className="rounded-lg bg-petroleum px-4 py-2 text-sm text-white">
-                Suscribirme a {plan.name}
-              </button>
-            </form>
-          </div>
-        ))}
+      <div className="max-w-lg rounded-xl border border-stone-200 p-5">
+        <p className="font-bold text-lg text-petroleum">SEMBORA IA</p>
+        <p className="mb-1 font-bold text-3xl text-ink">
+          $599 <span className="font-normal text-base text-stone-500">MXN / mes</span>
+        </p>
+        <p className="mb-4 text-sm text-stone-500">
+          WhatsApp con Bora, agendado en Google Calendar, leads y conversaciones ilimitadas.
+        </p>
+        <form action={startCheckout}>
+          <button className="rounded-lg bg-petroleum px-4 py-2 text-sm text-white">
+            Suscribirme
+          </button>
+        </form>
       </div>
     </div>
   );
