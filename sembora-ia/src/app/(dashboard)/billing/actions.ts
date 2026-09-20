@@ -4,24 +4,13 @@ import { redirect } from "next/navigation";
 import { getStripeClient } from "@/lib/stripe/client";
 import { requireOwnerContext } from "@/lib/auth/business-context";
 
-const PRICE_ENV_BY_PLAN: Record<string, string> = {
-  starter: "STRIPE_PRICE_STARTER",
-  pro: "STRIPE_PRICE_PRO",
-};
-
-export async function startCheckout(formData: FormData) {
+export async function startCheckout() {
   const { business } = await requireOwnerContext();
-  const plan = String(formData.get("plan"));
-  const priceEnvVar = PRICE_ENV_BY_PLAN[plan];
 
-  if (!priceEnvVar) {
-    throw new Error(`Plan desconocido: "${plan}".`);
-  }
-
-  const priceId = process.env[priceEnvVar];
+  const priceId = process.env.STRIPE_PRICE_ID;
   if (!priceId) {
     throw new Error(
-      `Falta configurar ${priceEnvVar} en las variables de entorno (el Price ID de Stripe para el plan "${plan}").`
+      "Falta configurar STRIPE_PRICE_ID en las variables de entorno (el Price ID de Stripe del plan de SEMBORA IA)."
     );
   }
 
