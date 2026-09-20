@@ -4,7 +4,7 @@ import { logoutAction } from "@/app/(auth)/actions";
 import { BarChart3, MessagesSquare, Settings, CreditCard, LogOut } from "lucide-react";
 
 const NAV_ITEM_CLASS =
-  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-stone-600 transition-colors hover:bg-stone-100 hover:text-ink";
+  "flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm text-stone-600 transition-colors hover:bg-stone-100 hover:text-ink";
 
 export default async function DashboardLayout({
   children,
@@ -14,14 +14,27 @@ export default async function DashboardLayout({
   const { business, membership } = await requireBusinessContext();
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="flex w-64 shrink-0 flex-col justify-between border-r border-stone-200 bg-white p-4">
+    <div className="flex min-h-screen flex-col md:flex-row">
+      <aside className="flex shrink-0 flex-col border-b border-stone-200 bg-white p-4 md:w-64 md:justify-between md:border-b-0 md:border-r">
         <div>
-          <Link href="/" className="mb-1 block font-bold text-lg text-petroleum">
-            SEMBORA IA
-          </Link>
-          <p className="mb-6 truncate text-sm text-stone-500">{business.name}</p>
-          <nav className="flex flex-col gap-1">
+          <div className="mb-3 flex items-center justify-between md:mb-6 md:block">
+            <div>
+              <Link href="/" className="block font-bold text-lg text-petroleum">
+                SEMBORA IA
+              </Link>
+              <p className="truncate text-sm text-stone-500 md:mt-1">{business.name}</p>
+            </div>
+            <form action={logoutAction} className="md:hidden">
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-stone-500 text-xs hover:bg-stone-100 hover:text-ink"
+              >
+                <LogOut size={16} strokeWidth={1.75} />
+                Salir
+              </button>
+            </form>
+          </div>
+          <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 md:mx-0 md:flex-col md:overflow-visible md:px-0">
             <Link href="/dashboard" className={NAV_ITEM_CLASS}>
               <BarChart3 size={18} strokeWidth={1.75} />
               Métricas
@@ -44,7 +57,7 @@ export default async function DashboardLayout({
             )}
           </nav>
         </div>
-        <form action={logoutAction}>
+        <form action={logoutAction} className="hidden md:block">
           <button
             type="submit"
             className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-stone-500 transition-colors hover:bg-stone-100 hover:text-ink"
@@ -54,7 +67,7 @@ export default async function DashboardLayout({
           </button>
         </form>
       </aside>
-      <main className="flex-1 p-8">{children}</main>
+      <main className="flex-1 p-4 md:p-8">{children}</main>
     </div>
   );
 }
