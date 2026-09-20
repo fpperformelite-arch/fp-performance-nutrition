@@ -28,7 +28,7 @@ export async function GET() {
   let kapsoCustomerId = config?.kapso_customer_id ?? null;
 
   if (!kapsoCustomerId) {
-    kapsoCustomerId = await createKapsoCustomer(business.name);
+    kapsoCustomerId = await createKapsoCustomer(business.name, business.id);
     await db
       .updateTable("bora_configs")
       .set({ kapso_customer_id: kapsoCustomerId })
