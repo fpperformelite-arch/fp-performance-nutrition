@@ -4,6 +4,9 @@ import { requireBusinessContext } from "@/lib/auth/business-context";
 import { isTrialExpired, trialDaysRemaining } from "@/lib/billing/trial";
 import type { BoraConfig } from "@/types/database";
 import { sql } from "kysely";
+import { MessageCircle, Users, CalendarCheck, TrendingUp, CircleCheck } from "lucide-react";
+
+const METRIC_ICONS = [MessageCircle, Users, CalendarCheck, TrendingUp];
 
 // Métricas básicas del MVP: conversaciones, citas agendadas, conversión.
 // Se calculan al vuelo con consultas simples; si el volumen crece, esto se
@@ -77,7 +80,7 @@ export default async function DashboardPage() {
     <div>
       {membership.role === "owner" && business.status === "trial" && (
         <div
-          className={`mb-8 rounded-xl border p-5 ${
+          className={`mb-8 rounded-2xl border p-5 ${
             trialExpired
               ? "border-red-300 bg-red-50"
               : "border-amber-300 bg-amber-50"
@@ -104,17 +107,14 @@ export default async function DashboardPage() {
               </p>
             </>
           )}
-          <Link
-            href="/billing"
-            className="inline-block rounded-full bg-petroleum px-5 py-2 text-sm text-white"
-          >
+          <Link href="/billing" className="btn-primary">
             Activar mi plan — $599 MXN/mes
           </Link>
         </div>
       )}
 
       {membership.role === "owner" && pendingSteps.length > 0 && (
-        <div className="mb-8 rounded-xl border border-coral/30 bg-coral/5 p-5">
+        <div className="mb-8 rounded-2xl border border-coral/30 bg-coral/5 p-5">
           <h2 className="mb-3 font-semibold text-ink">
             Te faltan {pendingSteps.length} pasos para que Bora esté 100% activo
           </h2>
@@ -124,11 +124,11 @@ export default async function DashboardPage() {
                 <span
                   className={
                     step.done
-                      ? "flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-white text-xs"
-                      : "flex h-5 w-5 items-center justify-center rounded-full border border-stone-300 text-xs"
+                      ? "flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-white"
+                      : "flex h-5 w-5 items-center justify-center rounded-full border border-stone-300"
                   }
                 >
-                  {step.done ? "✓" : ""}
+                  {step.done && <CircleCheck size={14} strokeWidth={2.5} />}
                 </span>
                 <span className={step.done ? "text-stone-400 line-through" : "text-ink"}>
                   {step.label}
@@ -136,23 +136,26 @@ export default async function DashboardPage() {
               </li>
             ))}
           </ul>
-          <Link
-            href="/settings"
-            className="mt-4 inline-block rounded-full bg-petroleum px-5 py-2 text-sm text-white"
-          >
+          <Link href="/settings" className="btn-primary mt-4">
             Ir a Configurar Bora
           </Link>
         </div>
       )}
 
-      <h1 className="mb-6 font-bold text-2xl">Métricas</h1>
+      <h1 className="mb-6 font-bold text-2xl text-ink">Métricas</h1>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {metrics.map((m) => (
-          <div key={m.label} className="rounded-xl border border-stone-200 p-4">
-            <p className="text-sm text-stone-500">{m.label}</p>
-            <p className="font-bold text-2xl text-petroleum">{m.value}</p>
-          </div>
-        ))}
+        {metrics.map((m, i) => {
+          const Icon = METRIC_ICONS[i];
+          return (
+            <div key={m.label} className="card">
+              <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-petroleum/10 text-petroleum">
+                <Icon size={18} strokeWidth={1.75} />
+              </div>
+              <p className="text-sm text-stone-500">{m.label}</p>
+              <p className="font-bold text-2xl text-ink">{m.value}</p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
