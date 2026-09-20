@@ -91,7 +91,7 @@ function findServiceByReply(services: Service[], text: string): Service | null {
   if (!Number.isNaN(asNumber) && active[asNumber - 1]) return active[asNumber - 1];
 
   const lower = text.toLowerCase();
-  return active.find((s) => lower.includes(s.name.toLowerCase())) ?? null;
+  return active.find((s) => s.name.toLowerCase().includes(lower)) ?? null;
 }
 
 // Genera slots candidatos dentro del horario configurado, excluyendo los
