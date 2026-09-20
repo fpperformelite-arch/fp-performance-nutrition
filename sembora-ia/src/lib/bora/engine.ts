@@ -75,7 +75,13 @@ function formatServicesList(services: Service[]): string {
   return services
     .filter((s) => s.is_active)
     .sort((a, b) => a.sort_order - b.sort_order)
-    .map((s, i) => `${i + 1}. ${s.name} (${s.duration_minutes} min)`)
+    .map((s, i) => {
+      const price =
+        s.price_cents != null
+          ? ` — $${(s.price_cents / 100).toLocaleString("es-MX")} ${s.currency}`
+          : "";
+      return `${i + 1}. ${s.name} (${s.duration_minutes} min)${price}`;
+    })
     .join("\n");
 }
 
