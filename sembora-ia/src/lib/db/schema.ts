@@ -58,6 +58,7 @@ export interface BoraConfigsTable {
   reminder_hours_before: Generated<number>;
   whatsapp_phone_number_id: string | null;
   whatsapp_business_account_id: string | null;
+  kapso_customer_id: string | null;
   google_calendar_id: string | null;
   google_refresh_token: string | null;
   is_active: Generated<boolean>;
