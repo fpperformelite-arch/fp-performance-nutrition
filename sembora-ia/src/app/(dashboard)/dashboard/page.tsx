@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db/client";
 import { requireBusinessContext } from "@/lib/auth/business-context";
+import { isTrialExpired, trialDaysRemaining } from "@/lib/billing/trial";
 import type { BoraConfig } from "@/types/database";
 import { sql } from "kysely";
 
@@ -69,9 +70,49 @@ export default async function DashboardPage() {
     { label: "Agrega tus preguntas frecuentes", done: faqsCount > 0 },
   ];
   const pendingSteps = checklist.filter((s) => !s.done);
+  const trialExpired = isTrialExpired(business);
+  const daysLeft = trialDaysRemaining(business);
 
   return (
     <div>
+      {membership.role === "owner" && business.status === "trial" && (
+        <div
+          className={`mb-8 rounded-xl border p-5 ${
+            trialExpired
+              ? "border-red-300 bg-red-50"
+              : "border-amber-300 bg-amber-50"
+          }`}
+        >
+          {trialExpired ? (
+            <>
+              <h2 className="mb-1 font-semibold text-red-800">
+                Tu prueba gratis terminó — Bora dejó de responder mensajes
+              </h2>
+              <p className="mb-3 text-red-700 text-sm">
+                Los leads que te escriban seguirán quedando registrados, pero Bora ya no
+                los atiende automáticamente hasta que actives tu plan.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="mb-1 font-semibold text-amber-800">
+                Te quedan {daysLeft} {daysLeft === 1 ? "día" : "días"} de prueba gratis
+              </h2>
+              <p className="mb-3 text-amber-700 text-sm">
+                Después de la prueba, Bora deja de responder mensajes hasta que actives tu
+                plan.
+              </p>
+            </>
+          )}
+          <Link
+            href="/billing"
+            className="inline-block rounded-full bg-petroleum px-5 py-2 text-sm text-white"
+          >
+            Activar mi plan — $599 MXN/mes
+          </Link>
+        </div>
+      )}
+
       {membership.role === "owner" && pendingSteps.length > 0 && (
         <div className="mb-8 rounded-xl border border-coral/30 bg-coral/5 p-5">
           <h2 className="mb-3 font-semibold text-ink">
