@@ -7,6 +7,7 @@ import { db } from "@/lib/db/client";
 import type { DB } from "@/lib/db/schema";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, destroySession } from "@/lib/auth/session";
+import { TRIAL_DAYS } from "@/lib/billing/trial";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -101,9 +102,10 @@ export async function registerAction(
     // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
+        const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
         business = await trx
           .insertInto("businesses")
-          .values({ name: businessName, slug })
+          .values({ name: businessName, slug, trial_ends_at: trialEndsAt.toISOString() })
           .returningAll()
           .executeTakeFirstOrThrow();
         break;

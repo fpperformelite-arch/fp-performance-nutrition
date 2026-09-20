@@ -1,5 +1,6 @@
 import { db } from "@/lib/db/client";
 import { handleIncomingMessage } from "@/lib/bora/engine";
+import { hasActiveAccess } from "@/lib/billing/trial";
 import type { BoraConfig, Business, Conversation, Faq, Lead, Service } from "@/types/database";
 
 // ───────────────────────────────────────────────────────────────────────
@@ -118,10 +119,21 @@ export async function processIncomingMessage(
     })
     .execute();
 
-  // 4. Si no es texto, Bora no intenta interpretarlo — responde un mensaje
-  //    genérico en vez de dejar al lead sin respuesta.
-  const reply =
-    msg.type === "text"
+  // 4. Si la prueba gratis del negocio ya venció y no se suscribió, Bora dejó
+  //    de operar para ese negocio — el lead igual queda registrado arriba
+  //    (para que el dueño vea lo que se está perdiendo y active su plan),
+  //    pero recibe una respuesta neutral en vez de que Bora siga trabajando
+  //    gratis indefinidamente. Nunca se le menciona el estado de la cuenta
+  //    a un extraño que le escribe al negocio.
+  const reply = !hasActiveAccess(business)
+    ? {
+        reply:
+          "¡Gracias por escribirnos! En este momento no podemos procesar tu solicitud de forma automática, pero un miembro de nuestro equipo revisará tu mensaje y te contactará pronto.",
+        newBotState: conversation.bot_state,
+      }
+    : // 5. Si no es texto, Bora no intenta interpretarlo — responde un mensaje
+      // genérico en vez de dejar al lead sin respuesta.
+      msg.type === "text"
       ? await handleIncomingMessage(
           { db, business, config, services, faqs },
           conversation,
@@ -133,7 +145,7 @@ export async function processIncomingMessage(
           newBotState: conversation.bot_state,
         };
 
-  // 5. Persistir el nuevo estado de conversación / lead.
+  // 6. Persistir el nuevo estado de conversación / lead.
   await db
     .updateTable("conversations")
     .set({ bot_state: reply.newBotState, last_message_at: new Date().toISOString() })
@@ -144,7 +156,7 @@ export async function processIncomingMessage(
     await db.updateTable("leads").set(reply.leadUpdates).where("id", "=", lead.id).execute();
   }
 
-  // 6. Enviar la respuesta (por el canal que corresponda) y guardarla como
+  // 7. Enviar la respuesta (por el canal que corresponda) y guardarla como
   //    mensaje saliente.
   const sendResult = await sendReply({
     phoneNumberId: msg.phoneNumberId,
