@@ -137,7 +137,8 @@ async function suggestAvailableSlots(
 
     const withinBusinessHours = isWithinBusinessHours(
       new Date(slotStart),
-      config.business_hours
+      config.business_hours,
+      ctx.business.timezone
     );
     if (!withinBusinessHours) continue;
 
@@ -150,16 +151,40 @@ async function suggestAvailableSlots(
   return candidates;
 }
 
+// El servidor corre en UTC (Vercel), así que `date.getDay()`/`toTimeString()`
+// dan el día/hora equivocados para un negocio en otra zona horaria — hay que
+// preguntarle a Intl explícitamente qué día/hora es en LA ZONA DEL NEGOCIO,
+// nunca la del servidor.
+const WEEKDAY_INDEX: Record<string, number> = {
+  Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+};
+
+function zonedDayAndTime(date: Date, timeZone: string): { dayIndex: number; hhmm: string } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+
+  const weekday = parts.find((p) => p.type === "weekday")!.value;
+  const hour = parts.find((p) => p.type === "hour")!.value;
+  const minute = parts.find((p) => p.type === "minute")!.value;
+
+  return { dayIndex: WEEKDAY_INDEX[weekday], hhmm: `${hour}:${minute}` };
+}
+
 function isWithinBusinessHours(
   date: Date,
-  hours: BoraConfig["business_hours"]
+  hours: BoraConfig["business_hours"],
+  timeZone: string
 ): boolean {
   const dayKeys: (keyof typeof hours)[] = [
     "sun", "mon", "tue", "wed", "thu", "fri", "sat",
   ];
-  const day = dayKeys[date.getDay()];
-  const ranges = hours[day] ?? [];
-  const hhmm = date.toTimeString().slice(0, 5);
+  const { dayIndex, hhmm } = zonedDayAndTime(date, timeZone);
+  const ranges = hours[dayKeys[dayIndex]] ?? [];
   return ranges.some(([start, end]) => hhmm >= start && hhmm <= end);
 }
 
@@ -221,7 +246,14 @@ export async function handleIncomingMessage(
       }
 
       const options = slots
-        .map((d, i) => `${i + 1}. ${d.toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" })}`)
+        .map(
+          (d, i) =>
+            `${i + 1}. ${d.toLocaleString("es-MX", {
+              dateStyle: "medium",
+              timeStyle: "short",
+              timeZone: ctx.business.timezone,
+            })}`
+        )
         .join("\n");
 
       return {
@@ -281,7 +313,11 @@ export async function handleIncomingMessage(
       return {
         reply:
           `¡Listo! Tu cita para "${service?.name}" quedó agendada el ` +
-          `${startsAt.toLocaleString("es-MX", { dateStyle: "full", timeStyle: "short" })}. ` +
+          `${startsAt.toLocaleString("es-MX", {
+            dateStyle: "full",
+            timeStyle: "short",
+            timeZone: ctx.business.timezone,
+          })}. ` +
           `Te esperamos 🙌`,
         newBotState: { step: "done" },
         leadUpdates: { status: "scheduled" },
