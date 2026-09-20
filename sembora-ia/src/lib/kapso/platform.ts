@@ -33,10 +33,10 @@ async function kapsoFetch(path: string, init: RequestInit) {
 // SEMBORA IA. Se crea una sola vez por negocio; guardamos su id en
 // bora_configs.kapso_customer_id para no duplicarlo en conexiones futuras
 // (ej. si el dueño reconecta o agrega un segundo número).
-export async function createKapsoCustomer(name: string): Promise<string> {
+export async function createKapsoCustomer(name: string, externalCustomerId: string): Promise<string> {
   const data = await kapsoFetch("/customers", {
     method: "POST",
-    body: JSON.stringify({ customer: { name } }),
+    body: JSON.stringify({ customer: { name, external_customer_id: externalCustomerId } }),
   });
   return data.data.id as string;
 }
