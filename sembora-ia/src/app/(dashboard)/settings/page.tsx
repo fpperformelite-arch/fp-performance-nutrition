@@ -10,7 +10,7 @@ import { addFaq, addService, deleteService, updateBoraConfig, updateService } fr
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: { google?: string };
+  searchParams: { google?: string; whatsapp?: string };
 }) {
   const { business } = await requireBusinessContext();
 
@@ -27,6 +27,7 @@ export default async function SettingsPage({
   ]);
 
   const googleConnected = Boolean(config?.google_refresh_token);
+  const whatsappConnected = Boolean(config?.whatsapp_phone_number_id) && Boolean(config?.is_active);
 
   return (
     <div className="flex flex-col gap-10">
@@ -42,6 +43,44 @@ export default async function SettingsPage({
             No se pudo conectar Google Calendar. Intenta de nuevo.
           </p>
         )}
+        {searchParams.whatsapp === "connected" && (
+          <p className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-green-700 text-sm">
+            WhatsApp conectado correctamente. Bora ya puede responder mensajes.
+          </p>
+        )}
+        {searchParams.whatsapp === "error" && (
+          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-red-700 text-sm">
+            No se pudo conectar WhatsApp. Intenta de nuevo.
+          </p>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-4 font-bold text-xl">WhatsApp</h2>
+        {whatsappConnected ? (
+          <p className="text-sm text-green-700">
+            Conectado (Phone Number ID: {config?.whatsapp_phone_number_id}). Bora está
+            respondiendo en este número.
+          </p>
+        ) : (
+          <p className="text-sm text-stone-500">
+            Sin conectar — Bora no puede responder mensajes hasta que conectes un número de
+            WhatsApp Business.
+          </p>
+        )}
+        <a
+          href="/api/kapso/setup"
+          className="mt-2 inline-block rounded-lg border border-petroleum px-4 py-2 text-sm text-petroleum"
+        >
+          {whatsappConnected ? "Reconectar WhatsApp" : "Conectar WhatsApp"}
+        </a>
+        <p className="mt-2 max-w-lg text-stone-400 text-xs">
+          Te va a pedir iniciar sesión con tu Facebook/WhatsApp Business — nosotros nunca vemos
+          esas credenciales, solo recibimos la confirmación de que quedó conectado.
+        </p>
+      </section>
+
+      <section>
         <form action={updateBoraConfig} className="flex max-w-lg flex-col gap-3">
           <label className="text-sm">
             Nombre del asistente
