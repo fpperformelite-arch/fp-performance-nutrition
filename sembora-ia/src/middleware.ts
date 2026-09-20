@@ -14,7 +14,9 @@ export function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/onboarding");
   const isApiRoute = request.nextUrl.pathname.startsWith("/api");
-  const isPublicRoute = request.nextUrl.pathname === "/";
+  const isPublicRoute =
+    request.nextUrl.pathname === "/" ||
+    request.nextUrl.pathname.startsWith("/opengraph-image");
   const hasSession = request.cookies.has(SESSION_COOKIE);
 
   if (!hasSession && !isAuthRoute && !isApiRoute && !isPublicRoute) {
