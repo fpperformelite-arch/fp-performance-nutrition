@@ -1,7 +1,7 @@
 import { db } from "@/lib/db/client";
 import { requireBusinessContext } from "@/lib/auth/business-context";
 import type { BoraConfig, Faq, Service } from "@/types/database";
-import { addFaq, addService, updateBoraConfig } from "./actions";
+import { addFaq, addService, deleteService, updateBoraConfig, updateService } from "./actions";
 
 // Esta página es, literalmente, la razón por la que Bora funciona igual
 // para un gimnasio que para un consultorio dental: todo lo que un dueño de
@@ -131,14 +131,50 @@ export default async function SettingsPage({
 
       <section>
         <h2 className="mb-4 font-bold text-xl">Servicios</h2>
-        <ul className="mb-4 flex flex-col gap-1 text-sm">
+        <ul className="mb-4 flex flex-col gap-2 text-sm">
           {services.map((s) => (
-            <li key={s.id}>
-              {s.name} — {s.duration_minutes} min
+            <li key={s.id} className="rounded-lg border border-stone-200 p-3">
+              <form action={updateService} className="flex flex-wrap items-center gap-2">
+                <input type="hidden" name="service_id" value={s.id} />
+                <input
+                  name="name"
+                  defaultValue={s.name}
+                  required
+                  className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                />
+                <input
+                  name="duration_minutes"
+                  type="number"
+                  defaultValue={s.duration_minutes}
+                  className="w-20 rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                  aria-label="Duración en minutos"
+                />
+                <span className="text-stone-500 text-xs">min</span>
+                <span className="text-stone-500 text-xs">$</span>
+                <input
+                  name="price_pesos"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  defaultValue={s.price_cents != null ? (s.price_cents / 100).toString() : ""}
+                  placeholder="Precio"
+                  className="w-24 rounded-lg border border-stone-300 px-3 py-2 text-sm"
+                  aria-label="Precio en pesos"
+                />
+                <span className="text-stone-500 text-xs">MXN</span>
+                <button className="rounded-lg bg-petroleum px-3 py-2 text-white text-xs">
+                  Guardar
+                </button>
+              </form>
+              <form action={deleteService} className="mt-1">
+                <input type="hidden" name="service_id" value={s.id} />
+                <button className="text-red-600 text-xs underline">Borrar</button>
+              </form>
             </li>
           ))}
         </ul>
-        <form action={addService} className="flex max-w-lg gap-2">
+        <p className="mb-2 font-medium text-sm text-stone-600">Agregar nuevo servicio</p>
+        <form action={addService} className="flex max-w-lg flex-wrap gap-2">
           <input
             name="name"
             placeholder="Nombre del servicio"
@@ -149,7 +185,16 @@ export default async function SettingsPage({
             name="duration_minutes"
             type="number"
             defaultValue={30}
-            className="w-24 rounded-lg border border-stone-300 px-3 py-2 text-sm"
+            placeholder="Min"
+            className="w-20 rounded-lg border border-stone-300 px-3 py-2 text-sm"
+          />
+          <input
+            name="price_pesos"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="Precio MXN"
+            className="w-28 rounded-lg border border-stone-300 px-3 py-2 text-sm"
           />
           <button className="rounded-lg bg-petroleum px-4 py-2 text-sm text-white">
             Agregar
