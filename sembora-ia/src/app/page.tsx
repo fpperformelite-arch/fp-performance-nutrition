@@ -192,6 +192,14 @@ function Footer() {
       <a href="mailto:fpperformelite@gmail.com" className="hover:text-petroleum">
         fpperformelite@gmail.com
       </a>
+      <div className="flex gap-4">
+        <Link href="/privacidad" className="hover:text-petroleum">
+          Aviso de Privacidad
+        </Link>
+        <Link href="/terminos" className="hover:text-petroleum">
+          Términos de Uso
+        </Link>
+      </div>
     </footer>
   );
 }
